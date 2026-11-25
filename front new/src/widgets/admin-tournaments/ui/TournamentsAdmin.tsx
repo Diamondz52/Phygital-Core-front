@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/shared/ui/Button";
+import Link from "next/link";
 import { useState } from "react";
 import { Eye, FileText, PenLine, Plus, Trash2 } from "lucide-react";
 import {
@@ -10,9 +11,13 @@ import {
   partnerTournamentService,
   isPartnerTournamentId,
   useTournamentPages,
+  type PartnerActor,
+  type TournamentPageContent,
 } from "@/entities/tournament";
+import type { Team } from "@/entities/team";
+import type { TournamentApplication } from "@/entities/tournament-application";
 import { useAuth } from "@/entities/user";
-import { usePlatformStore } from "@/entities/platform";
+import { usePlatformStore, type TournamentDraft } from "@/entities/platform";
 import { AdminPageHeader } from "@/shared/ui/SectionHeader";
 import { Badge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -24,12 +29,35 @@ import { Confirm } from "@/shared/ui/ConfirmDialog";
 import { AdminFilters } from "@/features/filter-admin-data";
 import { TournamentForm } from "@/features/manage-tournament";
 import { TournamentPageEditor } from "@/features/edit-tournament-page";
-export function TournamentsAdmin() {
-  const store = usePlatformStore(),
-    { busy, error, run } = useAction();
-  const { user } = useAuth();
-  const local = usePartnerTournaments();
-  const pageContent = useTournamentPages();
+export interface TournamentsAdminSandbox {
+  store: {
+    state: { tournaments: Tournament[]; teams: Team[] };
+    createTournament: (draft: TournamentDraft) => Promise<unknown>;
+    updateTournament: (id: string, patch: Partial<Tournament>) => Promise<unknown>;
+    deleteTournament: (id: string) => Promise<unknown>;
+  };
+  user: PartnerActor;
+  local: { tournaments: Tournament[]; applications: TournamentApplication[]; error: string | null };
+  pageContent: { pages: Record<string, TournamentPageContent>; error: string | null };
+  partnerService: Pick<
+    typeof partnerTournamentService,
+    "createTournament" | "updateTournament" | "deleteTournament"
+  >;
+  savePage: (id: string, content: TournamentPageContent) => Promise<void>;
+  previewHref?: (id: string) => string;
+}
+
+export function TournamentsAdmin({ sandbox }: { sandbox?: TournamentsAdminSandbox } = {}) {
+  const realStore = usePlatformStore();
+  const { busy, error, run } = useAction();
+  const auth = useAuth();
+  const realLocal = usePartnerTournaments();
+  const realPageContent = useTournamentPages();
+  const store = sandbox ? sandbox.store : realStore;
+  const user = sandbox ? sandbox.user : auth.user;
+  const local = sandbox ? sandbox.local : realLocal;
+  const pageContent = sandbox ? sandbox.pageContent : realPageContent;
+  const partnerService = sandbox ? sandbox.partnerService : partnerTournamentService;
   const tournaments = [...store.state.tournaments, ...local.tournaments];
   const [search, setSearch] = useState(""),
     [city, setCity] = useState("ALL"),
@@ -132,6 +160,7 @@ export function TournamentsAdmin() {
           tournament={pageEditing}
           content={pageContent.pages[pageEditing.id]}
           teams={store.state.teams}
+          savePage={sandbox ? (content) => sandbox.savePage(pageEditing.id, content) : undefined}
           close={() => setPageEditing(null)}
         />
       )}
@@ -159,12 +188,12 @@ export function TournamentsAdmin() {
                     imageUrl: draft.imageUrl,
                   };
                   if (isPartnerTournamentId(editing.id)) {
-                    await partnerTournamentService.updateTournament(editing.id, patch, user);
+                    await partnerService.updateTournament(editing.id, patch, user);
                   } else {
                     await store.updateTournament(editing.id, patch);
                   }
                 } else if (destination === "PARTNER") {
-                  await partnerTournamentService.createTournament(draft, user);
+                  await partnerService.createTournament(draft, user);
                 } else {
                   await store.createTournament(draft);
                 }
@@ -191,6 +220,11 @@ export function TournamentsAdmin() {
             {new Date(selected.startAt).toLocaleString("ru-RU")}
             {selected.endAt ? ` — ${new Date(selected.endAt).toLocaleString("ru-RU")}` : ""}
           </p>
+          {sandbox?.previewHref && !isPartnerTournamentId(selected.id) && (
+            <Link className="pc-button secondary" href={sandbox.previewHref(selected.id)}>
+              Посмотреть демо-страницу
+            </Link>
+          )}
           <GlowButton
             onClick={() => {
               setEditing(selected);
@@ -224,8 +258,8 @@ export function TournamentsAdmin() {
               "delete-tournament",
               () =>
                 isPartnerTournamentId(selected.id)
-                  ? partnerTournamentService.deleteTournament(selected.id, user)
-                  : store.deleteTournament(selected.id),
+                  ? partnerService.deleteTournament(selected.id, user)
+                  : store.deleteTournament(selected.id).then(() => {}),
               "Турнир удалён",
             ).then((ok) => {
               if (!ok) return;

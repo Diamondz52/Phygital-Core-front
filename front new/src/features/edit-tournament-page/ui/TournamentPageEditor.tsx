@@ -35,11 +35,13 @@ export function TournamentPageEditor({
   content,
   teams,
   close,
+  savePage,
 }: {
   tournament: Tournament;
   content?: TournamentPageContent;
   teams: Team[];
   close: () => void;
+  savePage?: (content: TournamentPageContent) => Promise<void>;
 }) {
   const { user } = useAuth();
   const initial = useRef(content ?? getTournamentPageDefaults(tournament));
@@ -102,7 +104,8 @@ export function TournamentPageEditor({
         const validated = validateTournamentPage(draft);
         if (validated.winnerTeamId && !teams.some((team) => team.id === validated.winnerTeamId))
           throw new Error("Выберите существующую команду-победителя");
-        await tournamentPageService.save(tournament.id, validated, user);
+        if (savePage) await savePage(validated);
+        else await tournamentPageService.save(tournament.id, validated, user);
       },
       "Страница турнира сохранена",
     ).then((ok) => {

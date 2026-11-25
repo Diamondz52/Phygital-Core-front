@@ -22,7 +22,11 @@ import {
   getTournamentPageDefaults,
   useTournamentPages,
   tournamentStatus,
+  type Tournament,
+  type TournamentPageContent,
 } from "@/entities/tournament";
+import type { Team } from "@/entities/team";
+import type { TournamentApplication } from "@/entities/tournament-application";
 import { useApp } from "@/shared/providers";
 import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
@@ -42,7 +46,20 @@ const dateTime = (value: string) =>
     minute: "2-digit",
   });
 
-export function TournamentDetail({ id }: { id: string }) {
+export interface TournamentDetailPreview {
+  tournament: Tournament;
+  teams: Team[];
+  applications: TournamentApplication[];
+  content: TournamentPageContent;
+}
+
+export function TournamentDetail({
+  id,
+  preview,
+}: {
+  id: string;
+  preview?: TournamentDetailPreview;
+}) {
   const store = usePlatformStore();
   const { user } = useAuth();
   const loading = usePlatformLoading();
@@ -51,7 +68,12 @@ export function TournamentDetail({ id }: { id: string }) {
   const { openAuth } = useAuthModal();
   const [applying, setApplying] = useState(false);
   const [allTeams, setAllTeams] = useState(false);
-  const tournament = store.state.tournaments.find((item) => item.id === id);
+  const [previewTeam, setPreviewTeam] = useState<Team | null>(null);
+  const tournament = preview
+    ? preview.tournament
+    : store.state.tournaments.find((item) => item.id === id);
+  const teams = preview ? preview.teams : store.state.teams;
+  const applications = preview ? preview.applications : store.state.tournamentApplications;
   if (!tournament)
     return (
       <section className="td-shell td-empty content-section" aria-live="polite">
@@ -65,27 +87,44 @@ export function TournamentDetail({ id }: { id: string }) {
         )}
       </section>
     );
-  const content = local.pages[id] ?? getTournamentPageDefaults(tournament);
+  const content = preview
+    ? preview.content
+    : (local.pages[id] ?? getTournamentPageDefaults(tournament));
   const status = tournamentStatus(tournament);
   const registrations = [
     ...new Set(
-      store.state.tournamentApplications
-        .filter((item) => item.tournamentId === id && item.status !== "REJECTED")
+      applications
+        .filter((item) => item.tournamentId === tournament.id && item.status !== "REJECTED")
         .map((item) => item.teamId),
     ),
   ];
-  const winner = store.state.teams.find((team) => team.id === content.winnerTeamId);
+  const winner = teams.find((team) => team.id === content.winnerTeamId);
   const hasHistory = Boolean(content.historyText || content.gallery.length || content.winnerTeamId);
+  const showPreviewTeam = (team: Team | null) => {
+    setAllTeams(false);
+    setPreviewTeam(team);
+  };
   const teamList = (ids: string[]) => (
     <ul className="td-team-list">
       {ids.map((teamId) => {
-        const team = store.state.teams.find((item) => item.id === teamId);
+        const team = teams.find((item) => item.id === teamId);
         return (
           <li key={teamId}>
             <UsersRound aria-hidden="true" />
-            <Link href={`/teams?team=${encodeURIComponent(teamId)}`}>
-              {team?.name ?? "Команда недоступна"}
-            </Link>
+            {preview ? (
+              <Button
+                type="button"
+                className="td-preview-link"
+                onClick={() => showPreviewTeam(team ?? null)}
+                disabled={!team}
+              >
+                {team?.name ?? "Команда недоступна"}
+              </Button>
+            ) : (
+              <Link href={`/teams?team=${encodeURIComponent(teamId)}`}>
+                {team?.name ?? "Команда недоступна"}
+              </Link>
+            )}
           </li>
         );
       })}
@@ -98,7 +137,7 @@ export function TournamentDetail({ id }: { id: string }) {
         <ChevronLeft aria-hidden="true" />
         Назад к турнирам
       </Link>
-      {local.error && (
+      {!preview && local.error && (
         <p className="form-error" role="alert">
           {local.error}
         </p>
@@ -188,7 +227,7 @@ export function TournamentDetail({ id }: { id: string }) {
             <div className="td-block-heading">
               <h2>Команды</h2>
               <span className="td-count">
-                {registrations.length || user ? registrations.length : "—"}
+                {registrations.length || preview || user ? registrations.length : "—"}
               </span>
             </div>
             <p className="td-muted">Зарегистрировано на турнир</p>
@@ -196,7 +235,7 @@ export function TournamentDetail({ id }: { id: string }) {
               teamList(registrations.slice(0, 3))
             ) : (
               <p>
-                {user
+                {preview || user
                   ? "Зарегистрированных команд пока нет."
                   : "Войдите, чтобы посмотреть список зарегистрированных команд."}
               </p>
@@ -255,9 +294,19 @@ export function TournamentDetail({ id }: { id: string }) {
                     <div>
                       <span>Победитель турнира</span>
                       {winner ? (
-                        <Link href={`/teams?team=${encodeURIComponent(winner.id)}`}>
-                          {winner.name}
-                        </Link>
+                        preview ? (
+                          <Button
+                            type="button"
+                            className="td-preview-link"
+                            onClick={() => showPreviewTeam(winner)}
+                          >
+                            {winner.name}
+                          </Button>
+                        ) : (
+                          <Link href={`/teams?team=${encodeURIComponent(winner.id)}`}>
+                            {winner.name}
+                          </Link>
+                        )
                       ) : (
                         <p>Команда-победитель сейчас недоступна</p>
                       )}
@@ -278,7 +327,41 @@ export function TournamentDetail({ id }: { id: string }) {
           <Button onClick={() => setAllTeams(false)}>Закрыть</Button>
         </Modal>
       )}
-      {applying && (
+      {previewTeam && preview && (
+        <Modal
+          title={previewTeam.name}
+          subtitle="Демонстрационный состав команды"
+          onClose={() => setPreviewTeam(null)}
+        >
+          <ul className="td-team-list">
+            {previewTeam.members.map((member) => (
+              <li key={member.id}>
+                <UsersRound aria-hidden="true" />
+                <span>
+                  {member.name}
+                  {member.captain ? " · Капитан" : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {!previewTeam.members.length && <p>Игроки пока не добавлены.</p>}
+          <Button type="button" onClick={() => setPreviewTeam(null)}>
+            Закрыть
+          </Button>
+        </Modal>
+      )}
+      {applying && preview && (
+        <Modal title="Демонстрация регистрации" onClose={() => setApplying(false)}>
+          <p>
+            Это пример страницы турнира. В демонстрационном режиме заявки не отправляются, а
+            авторизация не требуется.
+          </p>
+          <Button type="button" onClick={() => setApplying(false)}>
+            Понятно
+          </Button>
+        </Modal>
+      )}
+      {applying && !preview && (
         <RegisterTeamModal
           tournament={tournament}
           close={() => setApplying(false)}

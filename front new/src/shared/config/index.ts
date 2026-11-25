@@ -11,3 +11,4 @@ export const CONTACTS = {
 } as const;
 export { PLATFORM_STORAGE_KEY } from "./storage";
 export { paths } from "./navigation";
+export { DEMO_PAGES_ENABLED } from "./demo";

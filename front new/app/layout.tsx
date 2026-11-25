@@ -7,6 +7,7 @@ import "@/app/styles/interactions.css";
 import "@/app/styles/modals.css";
 import "@/app/styles/events-home.css";
 import "@/app/styles/tournament-detail.css";
+import "@/app/styles/demo.css";
 import { AppProviders } from "@/app/providers";
 
 export const metadata: Metadata = {
