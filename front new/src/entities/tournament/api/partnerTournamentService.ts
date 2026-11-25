@@ -218,6 +218,24 @@ function mutate<T>(
 export const partnerTournamentService = {
   getState,
   subscribe,
+  async updateVenue(id: string, venue: string, actor: PartnerActor | null): Promise<void> {
+    requireAdmin(actor);
+    const normalized = venue.trim();
+    if (!normalized) throw new Error("Укажите место проведения");
+    return mutate((previous) => {
+      if (!previous.tournaments.some((item) => item.id === id))
+        throw new Error("Партнёрский турнир не найден");
+      return {
+        state: {
+          ...previous,
+          tournaments: previous.tournaments.map((item) =>
+            item.id === id ? { ...item, venue: normalized } : item,
+          ),
+        },
+        result: undefined,
+      };
+    });
+  },
   async createTournament(
     draft: PartnerTournamentDraft,
     actor: PartnerActor | null,

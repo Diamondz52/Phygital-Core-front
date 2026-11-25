@@ -37,7 +37,17 @@ export const demoTeams: Team[] = [
   id: `visual-team-${index}`,
   name,
   discipline: "Фиджитал-спорт",
-  members: [{ id: `visual-player-${index}`, name: `Игрок ${index + 1}`, captain: true }],
+  members: [
+    ["Иван Петров", "Алексей Смирнов", "Дмитрий Ковалёв", "Никита Соколов", "Артём Волков"],
+    ["Мария Иванова", "Анна Кузнецова", "Екатерина Морозова", "Ольга Фёдорова", "Полина Васильева"],
+    ["Максим Орлов", "Даниил Лебедев", "Александр Новиков", "Михаил Попов", "Кирилл Павлов"],
+    ["Сергей Никитин", "Андрей Захаров", "Роман Козлов", "Владислав Егоров", "Тимофей Соловьёв"],
+    ["Елена Воронова", "София Михайлова", "Виктория Соколова", "Дарья Белова", "Алиса Жукова"],
+  ][index].map((playerName, playerIndex) => ({
+    id: `visual-player-${index}-${playerIndex}`,
+    name: playerName,
+    captain: playerIndex === 0,
+  })),
 }));
 
 export const demoApplications: TournamentApplication[] = demoTeams.map((team, index) => ({

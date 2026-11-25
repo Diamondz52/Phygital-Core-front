@@ -60,6 +60,7 @@ export function useDemoSandbox() {
       pageContent: { pages: snapshot.pages, error: snapshot.error },
       partnerService,
       savePage,
+      saveVenue: demoSandboxService.saveVenue,
       visual: {
         tournament,
         teams: demoTeams,

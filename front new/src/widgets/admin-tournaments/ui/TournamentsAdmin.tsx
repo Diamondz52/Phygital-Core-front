@@ -11,6 +11,8 @@ import {
   partnerTournamentService,
   isPartnerTournamentId,
   useTournamentPages,
+  getTournamentPageDefaults,
+  tournamentPageService,
   type PartnerActor,
   type TournamentPageContent,
 } from "@/entities/tournament";
@@ -44,7 +46,24 @@ export interface TournamentsAdminSandbox {
     "createTournament" | "updateTournament" | "deleteTournament"
   >;
   savePage: (id: string, content: TournamentPageContent) => Promise<void>;
+  saveVenue: (id: string, venue: string) => Promise<void>;
   previewHref?: (id: string) => string;
+}
+
+const editorDateTime = (value: string | null | undefined, end = false) =>
+  value ? `${value.slice(0, 10)}T${value.slice(11, 16) || (end ? "23:59" : "00:00")}` : "";
+
+function hasCoreChanges(draft: TournamentDraft, current: Tournament) {
+  return [
+    [draft.name.trim(), current.name.trim()],
+    [draft.shortDescription.trim(), current.shortDescription.trim()],
+    [(draft.fullDescription ?? "").trim(), current.description.trim()],
+    [draft.city.trim(), current.city.trim()],
+    [editorDateTime(draft.startAt), editorDateTime(current.startAt)],
+    [editorDateTime(draft.endAt, true), editorDateTime(current.endAt, true)],
+    [draft.imageName ?? "", current.imageName ?? ""],
+    [draft.imageUrl ?? "", current.imageUrl ?? ""],
+  ].some(([next, previous]) => next !== previous);
 }
 
 export function TournamentsAdmin({ sandbox }: { sandbox?: TournamentsAdminSandbox } = {}) {
@@ -59,6 +78,10 @@ export function TournamentsAdmin({ sandbox }: { sandbox?: TournamentsAdminSandbo
   const pageContent = sandbox ? sandbox.pageContent : realPageContent;
   const partnerService = sandbox ? sandbox.partnerService : partnerTournamentService;
   const tournaments = [...store.state.tournaments, ...local.tournaments];
+  const venueFor = (tournament: Tournament) =>
+    isPartnerTournamentId(tournament.id)
+      ? tournament.venue.trim() || "Площадка уточняется"
+      : (pageContent.pages[tournament.id]?.venue ?? getTournamentPageDefaults(tournament).venue);
   const [search, setSearch] = useState(""),
     [city, setCity] = useState("ALL"),
     [date, setDate] = useState(""),
@@ -167,16 +190,29 @@ export function TournamentsAdmin({ sandbox }: { sandbox?: TournamentsAdminSandbo
       {(create || editing) && (
         <TournamentForm
           tournament={editing}
+          venue={editing ? venueFor(editing) : undefined}
+          saveError={error}
           destination={editing && isPartnerTournamentId(editing.id) ? "PARTNER" : "PHYGITAL"}
           close={() => {
             setCreate(false);
             setEditing(null);
           }}
-          save={(draft, destination) =>
+          save={(draft, destination, venue) =>
             void run(
               "tournament-save",
               async () => {
                 if (editing) {
+                  const current = tournaments.find((item) => item.id === editing.id);
+                  if (!current) throw new Error("Турнир больше недоступен");
+                  const normalizedVenue = venue?.trim();
+                  if (venue !== undefined && user?.role !== "ADMIN")
+                    throw new Error("Изменять место проведения может только администратор");
+                  if (venue !== undefined && !normalizedVenue)
+                    throw new Error("Укажите место проведения");
+                  const venueChanged =
+                    normalizedVenue !== undefined && normalizedVenue !== venueFor(current);
+                  if (venueChanged && !isPartnerTournamentId(current.id) && pageContent.error)
+                    throw new Error(pageContent.error);
                   const patch = {
                     name: draft.name,
                     shortDescription: draft.shortDescription,
@@ -187,10 +223,32 @@ export function TournamentsAdmin({ sandbox }: { sandbox?: TournamentsAdminSandbo
                     imageName: draft.imageName,
                     imageUrl: draft.imageUrl,
                   };
-                  if (isPartnerTournamentId(editing.id)) {
-                    await partnerService.updateTournament(editing.id, patch, user);
-                  } else {
-                    await store.updateTournament(editing.id, patch);
+                  let coreSaved = false;
+                  try {
+                    if (venue === undefined || hasCoreChanges(draft, current)) {
+                      if (isPartnerTournamentId(editing.id)) {
+                        await partnerService.updateTournament(editing.id, patch, user);
+                      } else {
+                        await store.updateTournament(editing.id, patch);
+                      }
+                      coreSaved = true;
+                    }
+                    if (venueChanged) {
+                      if (sandbox) await sandbox.saveVenue(current.id, normalizedVenue);
+                      else if (isPartnerTournamentId(current.id))
+                        await partnerTournamentService.updateVenue(
+                          current.id,
+                          normalizedVenue,
+                          user,
+                        );
+                      else await tournamentPageService.saveVenue(current, normalizedVenue, user);
+                    }
+                  } catch (reason) {
+                    if (coreSaved && venueChanged)
+                      throw new Error(
+                        `Основные параметры сохранены, но место проведения не сохранено. ${reason instanceof Error ? reason.message : "Попробуйте ещё раз."}`,
+                      );
+                    throw reason;
                   }
                 } else if (destination === "PARTNER") {
                   await partnerService.createTournament(draft, user);

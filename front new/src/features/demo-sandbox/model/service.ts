@@ -1,5 +1,6 @@
 import type { TournamentDraft } from "@/entities/platform";
 import {
+  getTournamentPageDefaults,
   isPageImageUrl,
   validateTournamentPage,
   type Tournament,
@@ -185,6 +186,42 @@ function mutate<T>(
 }
 
 export const demoSandboxService = {
+  async saveVenue(
+    id: string,
+    venue: string,
+    actor: typeof demoActor | null = demoActor,
+  ): Promise<void> {
+    ensureEnabled();
+    if (actor?.id !== demoActor.id || actor.role !== "ADMIN")
+      throw new Error("Сохранение доступно только для демо-турниров");
+    const normalized = venue.trim();
+    if (!normalized) throw new Error("Укажите место проведения");
+    return mutate((before) => {
+      const tournament = before.tournaments.find((item) => item.id === id);
+      if (!tournament || !isDemoId(id)) throw new Error("Демо-турнир не найден");
+      const partner = id.startsWith("local-partner-");
+      return {
+        document: {
+          version: 1,
+          tournaments: partner
+            ? before.tournaments.map((item) =>
+                item.id === id ? { ...item, venue: normalized } : item,
+              )
+            : before.tournaments,
+          pages: partner
+            ? before.pages
+            : {
+                ...before.pages,
+                [id]: validatedContent({
+                  ...(before.pages[id] ?? getTournamentPageDefaults(tournament)),
+                  venue: normalized,
+                }),
+              },
+        },
+        result: undefined,
+      };
+    });
+  },
   async createTournament(draft: TournamentDraft, partner = false): Promise<Tournament> {
     ensureEnabled();
     const normalized = validatedDraft(draft);

@@ -139,8 +139,9 @@ export function TournamentPageEditor({
           <section className="tpe-section">
             <h3>Основная информация</h3>
             <label>
-              Площадка проведения{" "}
+              Место проведения{" "}
               <input
+                placeholder="Название площадки и адрес"
                 value={draft.venue}
                 onChange={(event) => update("venue", event.target.value)}
                 required
@@ -194,19 +195,20 @@ export function TournamentPageEditor({
             <p>Каждая дисциплина отобразится отдельным тегом.</p>
           </section>
           <section className="tpe-section">
-            <h3>Декоративное изображение верхнего блока</h3>
+            <h3>Изображение обложки турнира</h3>
             <p>
-              Загрузите отдельный объект с прозрачным фоном. Баннер турнира остаётся самостоятельным
-              изображением.
+              Загрузите фотографию или объект с прозрачным фоном. Фото станет фоном обложки,
+              прозрачный объект сохранится целиком. Если изображение не выбрано, используется баннер
+              турнира.
             </p>
             {draft.visualUrl && (
               <div className="tpe-visual-preview">
-                <img src={draft.visualUrl} alt="Предпросмотр декоративного объекта" />
+                <img src={draft.visualUrl} alt="Предпросмотр изображения обложки" />
                 <Button
                   type="button"
                   variant="danger"
                   onClick={() =>
-                    remove("Удалить декоративное изображение?", () => update("visualUrl", ""))
+                    remove("Удалить изображение обложки?", () => update("visualUrl", ""))
                   }
                 >
                   <Trash2 />

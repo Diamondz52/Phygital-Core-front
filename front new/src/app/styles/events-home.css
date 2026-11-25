@@ -1,4 +1,18 @@
-/* Preserve the original stacked nearest-event sections; share their CTA geometry. */
+/* Alternate the event rows on desktop; keep heading-first reading order on smaller screens. */
+@media (min-width: 1001px) {
+  .nearest.nearest-partners {
+    grid-template-columns: 1.45fr 0.55fr;
+  }
+  .nearest-partners > .nearest-heading {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .nearest-partners > .nearest-heading + * {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
+/* Share the CTA geometry for Phygital tournaments and partner events. */
 .nearest-card .nearest-event-actions {
   display: flex;
 }

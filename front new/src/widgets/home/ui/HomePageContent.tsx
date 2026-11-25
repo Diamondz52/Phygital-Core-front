@@ -213,10 +213,9 @@ export function HomePageContent() {
       </Reveal>
       <Reveal>
         <section className="content-section nearest compact-section">
-          <div>
+          <div className="nearest-heading">
             <p className="eyebrow">СЛЕДУЮЩАЯ ОСТАНОВКА</p>
             <h2>Ближайший турнир</h2>
-            <p>Изучите формат и подайте заявку существующей командой.</p>
           </div>
           {nearest ? (
             <NearestEventCard tournament={nearest} />
@@ -227,12 +226,12 @@ export function HomePageContent() {
       </Reveal>
       <Reveal>
         <section
-          className="content-section nearest compact-section"
+          className="content-section nearest nearest-partners compact-section"
           aria-label="Другое от партнеров"
         >
-          <div>
+          <div className="nearest-heading">
             <p className="eyebrow">ДРУГОЕ ОТ ПАРТНЕРОВ</p>
-            <h2>Ближайшее событие партнеров</h2>
+            <h2>Ближайшее событие</h2>
           </div>
           {partners.error ? (
             <div className="state glass" role="alert">

@@ -15,12 +15,16 @@ export function TournamentForm({
   save,
   busy,
   destination = "PHYGITAL",
+  venue: initialVenue,
+  saveError = "",
 }: {
   tournament: Tournament | null;
   close: () => void;
-  save: (draft: TournamentDraft, destination: "PHYGITAL" | "PARTNER") => void;
+  save: (draft: TournamentDraft, destination: "PHYGITAL" | "PARTNER", venue?: string) => void;
   busy: boolean;
   destination?: "PHYGITAL" | "PARTNER";
+  venue?: string;
+  saveError?: string;
 }) {
   const [page, setPage] = useState(destination);
   const initialStart = tournament?.startAt ?? "",
@@ -29,6 +33,9 @@ export function TournamentForm({
     [shortDescription, setShortDescription] = useState(tournament?.shortDescription ?? ""),
     [fullDescription, setFullDescription] = useState(tournament?.description ?? ""),
     [city, setCity] = useState(tournament?.city ?? ""),
+    [venue, setVenue] = useState(
+      initialVenue ?? (tournament?.venue?.trim() || "Площадка уточняется"),
+    ),
     [startDate, setStartDate] = useState(initialStart.slice(0, 10)),
     [startTime, setStartTime] = useState(initialStart.slice(11, 16)),
     [endDate, setEndDate] = useState(initialEnd.slice(0, 10)),
@@ -76,6 +83,11 @@ export function TournamentForm({
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (busy || reading) return;
+    if (tournament && !venue.trim()) {
+      setError("Укажите место проведения");
+      return;
+    }
 
     // Обязательна только дата начала. Если время не указано, ставим 00:00
     if (!startDate) {
@@ -111,6 +123,7 @@ export function TournamentForm({
         imageUrl: preview,
       },
       page,
+      tournament ? venue.trim() : undefined,
     );
   };
 
@@ -173,6 +186,23 @@ export function TournamentForm({
           </span>
           <input value={city} onChange={(event) => setCity(event.target.value)} required />
         </label>
+        {tournament && (
+          <label>
+            <span>
+              Место проведения <b className="required">*</b>
+            </span>
+            <input
+              value={venue}
+              onChange={(event) => setVenue(event.target.value)}
+              placeholder="Название площадки и адрес"
+              disabled={busy || reading}
+              required
+            />
+            <small>
+              Площадка сохраняется локально в этом браузере и отображается на странице турнира.
+            </small>
+          </label>
+        )}
         <div className="file-picker">
           <input
             ref={inputRef}
@@ -314,7 +344,7 @@ export function TournamentForm({
               </button>
             ))}
         </div>
-        <ActionError message={error} />
+        <ActionError message={error || saveError} />
         <div className="form-actions">
           <SecondaryButton type="button" onClick={close}>
             Отмена

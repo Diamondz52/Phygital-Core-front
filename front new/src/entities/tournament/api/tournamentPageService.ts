@@ -1,9 +1,11 @@
 import { storageService } from "@/shared/storage/browserStorage";
 import {
+  getTournamentPageDefaults,
   validateTournamentPage,
   type TournamentPageContent,
   type TournamentPagesSnapshot,
 } from "../model/page-content";
+import type { Tournament } from "../model/types";
 
 export const TOURNAMENT_PAGES_STORAGE_KEY = "pc-tournament-pages-v1";
 const EVENT = "phygital:tournament-pages-changed";
@@ -110,6 +112,18 @@ function mutate(
 
 export const tournamentPageService = {
   subscribe,
+  async saveVenue(tournament: Tournament, venue: string, actor: Actor): Promise<void> {
+    requireAdmin(actor, tournament.id);
+    const normalized = venue.trim();
+    if (!normalized) throw new Error("Укажите место проведения");
+    return mutate((pages) => ({
+      ...pages,
+      [tournament.id]: validateTournamentPage({
+        ...(pages[tournament.id] ?? getTournamentPageDefaults(tournament)),
+        venue: normalized,
+      }),
+    }));
+  },
   async save(id: string, content: TournamentPageContent, actor: Actor): Promise<void> {
     requireAdmin(actor, id);
     const normalized = validateTournamentPage(content);

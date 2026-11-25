@@ -2,15 +2,12 @@
 
 import { useState, type FormEvent } from "react";
 import { Crown, Plus, Trash2, Pencil, LogOut } from "lucide-react";
-import { type Team } from "@/entities/team";
+import { type Team, TeamRoster, participants, initials } from "@/entities/team";
 import { usePlatformStore } from "@/entities/platform";
 import { useAuth } from "@/entities/user";
 import { useApp, useTeamLock } from "@/shared/providers";
-import { Badge } from "@/shared/ui/Badge";
 import { Button, GlowButton, SecondaryButton } from "@/shared/ui/Button";
 import { Modal } from "@/shared/ui/Modal";
-import { participants } from "@/entities/team";
-import { initials } from "@/entities/team";
 export function TeamProfileModal({
   team,
   close,
@@ -113,37 +110,24 @@ export function TeamProfileModal({
           {lockReason}
         </p>
       )}
-      <div className="team-roster">
-        {team.members.map((member) => (
-          <div className="roster-member" key={member.id}>
-            <span className="roster-avatar">{initials(member.name)}</span>
-            <span className="roster-name">
-              <b>{member.name}</b>
-              <small>{member.captain ? "Капитан команды" : "Участник"}</small>
-            </span>
-            {member.captain ? (
-              <Badge>
-                <Crown />
-                Капитан
-              </Badge>
-            ) : (
-              canManage && (
-                <button
-                  className="icon-button danger-icon"
-                  disabled={busy || Boolean(lockReason)}
-                  aria-label={`Удалить игрока ${member.name}`}
-                  onClick={() => {
-                    setError("");
-                    setConfirm({ kind: "remove", id: member.id, name: member.name });
-                  }}
-                >
-                  <Trash2 />
-                </button>
-              )
-            )}
-          </div>
-        ))}
-      </div>
+      <TeamRoster
+        members={team.members}
+        renderMemberAction={(member) =>
+          canManage && (
+            <button
+              className="icon-button danger-icon"
+              disabled={busy || Boolean(lockReason)}
+              aria-label={`Удалить игрока ${member.name}`}
+              onClick={() => {
+                setError("");
+                setConfirm({ kind: "remove", id: member.id, name: member.name });
+              }}
+            >
+              <Trash2 />
+            </button>
+          )
+        }
+      />
       {canManage && (
         <div className="team-edit-actions">
           <Button

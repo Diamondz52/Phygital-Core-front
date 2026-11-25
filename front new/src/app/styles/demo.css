@@ -52,35 +52,6 @@
 .demo-unavailable {
   min-height: 45vh;
 }
-.td-preview-link.pc-button {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: inherit;
-  font: inherit;
-  white-space: normal;
-  text-align: left;
-  justify-content: flex-start;
-  overflow-wrap: anywhere;
-}
-.td-preview-link.pc-button::before {
-  display: none;
-}
-.td-preview-link.pc-button:hover {
-  background: transparent;
-  color: #efcbff;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  transform: none;
-}
-.td-winner .td-preview-link.pc-button {
-  color: #fff;
-  font-size: 1.35rem;
-  font-weight: 700;
-}
 @media (max-width: 600px) {
   .demo-page-toolbar {
     width: calc(100% - 28px);
